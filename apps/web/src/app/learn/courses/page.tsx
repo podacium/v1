@@ -5572,7 +5572,7 @@ const CourseModules: React.FC = () => {
                                     className="flex-1 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl border border-white/30 transition-all duration-300 backdrop-blur-sm shadow-lg shadow-blue-500/30 hover:shadow-white/20 font-medium text-xs text-center"
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    onClick={(e) => {
+                                    onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                                       e.stopPropagation(); // Prevent triggering the card expand
                                     }}
                                   >

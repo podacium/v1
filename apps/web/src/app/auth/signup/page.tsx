@@ -6,7 +6,6 @@ import Link from 'next/link'
 import Head from 'next/head'
 import { motion, AnimatePresence } from 'framer-motion'
 import { signIn } from "next-auth/react";
-import { api, handleApiError } from '@/lib/api'
 
 // =============================================================================
 // TYPES AND INTERFACES

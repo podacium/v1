@@ -1626,7 +1626,9 @@ const LearningModules: React.FC = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setSortBy(e.target.value as "popular" | "new" | "duration" | "lessons")
+                  }
                   className="px-3 py-2 bg-white/80 backdrop-blur-md border border-gray-200 rounded-xl shadow-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
                 >
                   <option value="popular">Most Popular</option>

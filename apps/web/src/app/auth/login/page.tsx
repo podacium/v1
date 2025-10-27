@@ -9,6 +9,7 @@ import { signIn } from "next-auth/react"
 import { useAuth } from '@/contexts/AuthContext'
 import Navbar from '../../../components/Navbar'
 import Footer from '../../../components/Footer'
+import { Suspense } from 'react'
 
 // =============================================================================
 // REUSABLE COMPONENTS
@@ -440,10 +441,10 @@ const useSocialAuth = () => {
 }
 
 // =============================================================================
-// LOGIN FORM SECTION
+// LOGIN FORM CONTENT (USES SEARCH PARAMS)
 // =============================================================================
 
-export const LoginFormSection: React.FC = () => {
+const LoginFormContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'email' | 'social'>('email')
   const { loading: socialLoading, error: socialError, handleSocialLogin } = useSocialAuth()
   const { 
@@ -672,7 +673,7 @@ export const LoginFormSection: React.FC = () => {
 }
 
 // =============================================================================
-// MAIN PAGE COMPONENT
+// MAIN PAGE COMPONENT WITH SUSPENSE
 // =============================================================================
 
 const LoginPage: React.FC = () => {
@@ -693,7 +694,16 @@ const LoginPage: React.FC = () => {
         
         <main>
           <LoginHero />
-          <LoginFormSection />
+          <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading login form...</p>
+              </div>
+            </div>
+          }>
+            <LoginFormContent />
+          </Suspense>
         </main>
 
         <Footer />
