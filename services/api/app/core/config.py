@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     
     # CORS (comma separated string from env to List)
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "https://v1-podacium.vercel.app", ]
     
     # App
     APP_NAME: str = "Podacium API"
