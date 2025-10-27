@@ -1,0 +1,26 @@
+{
+    "python.defaultInterpreterPath": "/home/zuikre/podacium/services/api/podacium/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "tabnine.experimentalAutoImports": true,
+    "tabnine.experimentalAutoTriggerLanguages": [
+        "markdown",
+        "plaintext",
+        "python"
+    ],
+
+    "javascript.updateImportsOnFileMove.enabled": "always",
+
+    // 🧠 Smart AI & indentation coexistence
+    "editor.inlineSuggest.enabled": true,
+    "editor.tabCompletion": "on",
+    "editor.suggest.preview": true,
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": true
+    },
+    "editor.acceptSuggestionOnEnter": "smart",
+
+    // 🧹 Helps prevent tab from being “stolen” by AI
+    "editor.defaultFormatter": null
+}

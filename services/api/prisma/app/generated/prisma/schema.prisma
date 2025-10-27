@@ -1,0 +1,605 @@
+// ======================================================
+// 🌍 PODACIUM — Prisma Schema (for FastAPI + Supabase)
+// ======================================================
+// Database: PostgreSQL (Supabase / Railway)
+// ORM: Prisma Python Client
+// Output: ../app/generated/prisma
+// ======================================================
+
+generator client {
+  provider = "prisma-client-py"
+  output   = "./app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/////////////////////////
+// ENUMS
+/////////////////////////
+
+enum UserRole {
+  STUDENT
+  BUSINESS
+  FREELANCER
+  ADMIN
+  INSTRUCTOR
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  GITHUB
+  LINKEDIN
+  PHONE
+}
+
+enum DatasetStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum WidgetType {
+  CHART
+  KPI
+  TABLE
+  SCATTER
+  BUBBLE
+  CUSTOM
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum SubscriptionPlan {
+  FREE
+  INDIVIDUAL
+  ORGANIZATION
+}
+
+/////////////////////////
+// CORE: USERS & ORGANIZATIONS
+/////////////////////////
+
+model User {
+  id                  Int          @id @default(autoincrement())
+  fullName            String
+  email               String?      @unique
+  emailVerified       Boolean      @default(false)
+  passwordHash        String?
+  provider            AuthProvider @default(EMAIL)
+  providerId          String?
+  phoneNumber         String?      @unique
+  phoneVerified       Boolean      @default(false)
+  role                UserRole     @default(STUDENT)
+  acceptedTerms       Boolean      @default(false)
+  subscribeNewsletter Boolean      @default(false)
+  // Add these for better auth
+  isActive            Boolean      @default(true)
+  lastLoginAt         DateTime?
+  loginCount          Int          @default(0)
+
+  profilePictureUrl String?
+  bio               String?
+  country           String?
+  city              String?
+  socialLinks       Json? // { twitter, linkedin, github }
+  skills            String[] @default([]) // free tags for MVP
+
+  // Primary organization the user belongs to (optional)
+  primaryOrganizationId Int?
+  primaryOrganization   Organization? @relation("PrimaryUsers", fields: [primaryOrganizationId], references: [id], onDelete: Restrict)
+
+  // Organization the user owns (1:1)
+  ownedOrganization Organization? @relation("OrgOwner")
+
+  // Organization membership (many-to-many via OrganizationMember)
+  memberships OrganizationMember[] @relation("UserMemberships")
+
+  // Invitations sent to other org members
+  sentInvites OrganizationMember[] @relation("OrgInvites")
+
+  // Education
+  enrollments       Enrollment[]
+  lessonProgresses  LessonProgress[]
+  certificates      Certificate[]
+  instructedModules Module[]         @relation("ModuleInstructor")
+
+  // Freelancing
+  projects              Project[] // projects owned
+  proposals             Proposal[] // proposals authored
+  contractsAsFreelancer Contract[] // as freelancer in contracts
+  contractsAsClient     Contract[] @relation("ContractClient") // as client
+
+  // BI
+  datasets   Dataset[] // datasets uploaded by user
+  dashboards Dashboard[] // dashboards owned by user
+  insights   Insight[]
+  mlModels   MLModel[]   @relation("MLModelCreator")
+
+  // Payments & notifications
+  transactions  Transaction[]
+  subscriptions Subscription[]
+  notifications Notification[]
+
+  // Files & utilities
+  files         File[]
+  authTokens    AuthToken[]
+  auditLogs     AuditLog[]
+  skillsDetails UserSkill[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([role])
+  @@index([email])
+}
+
+model Organization {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  description String?
+  country     String?
+  website     String?
+  industry    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // owner: one User can own one Organization (1:1)
+  ownerId Int?  @unique
+  owner   User? @relation("OrgOwner", fields: [ownerId], references: [id])
+
+  // Users that have primaryOrganizationId pointing here (1:N)
+  primaryUsers User[] @relation("PrimaryUsers")
+
+  // Organization members (via OrganizationMember join)
+  members OrganizationMember[]
+
+  // Org resources
+  datasets      Dataset[]
+  dashboards    Dashboard[]
+  projects      Project[]
+  transactions  Transaction[]
+  subscriptions Subscription[]
+}
+
+model OrganizationMember {
+  id             Int       @id @default(autoincrement())
+  organizationId Int
+  userId         Int
+  role           String? // org-specific role (owner, admin, analyst)
+  invitedById    Int? // user who invited
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User         @relation("UserMemberships", fields: [userId], references: [id], onDelete: Restrict)
+  invitedBy    User?        @relation("OrgInvites", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, userId])
+}
+
+/////////////////////////
+// EDUCATION: PATHS, MODULES, LESSONS, ENROLLMENTS, PROGRESS, CERTS
+/////////////////////////
+
+model Path {
+  id          Int       @id @default(autoincrement())
+  title       String
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  modules     PathModule[] // join entries
+  enrollments Enrollment[]
+}
+
+model Module {
+  id              Int       @id @default(autoincrement())
+  title           String
+  slug            String    @unique
+  description     String?
+  fullDescription String?
+  durationMinutes Int?
+  estimatedEffort String?
+  totalLessons    Int?      @default(0)
+  level           String?
+  instructorId    Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  instructor   User?         @relation("ModuleInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
+  lessons      Lesson[]
+  certificates Certificate[]
+  enrollments  Enrollment[]
+  pathLinks    PathModule[]
+  skills       String[]      @default([])
+  tags         String[]      @default([])
+  priceCents   Int?
+  featured     Boolean       @default(false)
+  lastUpdated  DateTime?
+}
+
+model PathModule {
+  id       Int  @id @default(autoincrement())
+  pathId   Int
+  moduleId Int
+  order    Int? // module position in path
+
+  path   Path   @relation(fields: [pathId], references: [id], onDelete: Restrict)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+
+  @@unique([pathId, moduleId])
+}
+
+model Lesson {
+  id                      Int       @id @default(autoincrement())
+  moduleId                Int
+  title                   String
+  description             String?
+  durationMinutes         Int?
+  type                    String // "video", "interactive", "quiz"...
+  videoUrl                String?
+  transcript              String?
+  attachments             Json?
+  quizId                  Int?
+  requiredPassScore       Int?
+  order                   Int
+  thumbnailUrl            String?
+  thumbnailBlurDataURL    String?
+  learningObjectives      String[]  @default([])
+  keyTakeaways            String[]  @default([])
+  instructorNotes         String?
+  estimatedCompletionTime Int?
+  difficulty              String?
+  tags                    String[]  @default([])
+  relatedResources        Json?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  deletedAt               DateTime?
+
+  module     Module           @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  progresses LessonProgress[]
+}
+
+model Enrollment {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  moduleId    Int?
+  pathId      Int?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  progress    Float     @default(0.0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  module Module? @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  path   Path?   @relation(fields: [pathId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, moduleId])
+}
+
+model LessonProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  lessonId    Int
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  progress    Float     @default(0.0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, lessonId])
+}
+
+model Certificate {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  moduleId  Int?
+  fileUrl   String
+  issuedAt  DateTime  @default(now())
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  module Module? @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+}
+
+/////////////////////////
+// FREELANCING: PROJECTS, PROPOSALS, CONTRACTS, DELIVERIES
+/////////////////////////
+
+model Project {
+  id             Int           @id @default(autoincrement())
+  title          String
+  slug           String        @unique
+  description    String?
+  ownerId        Int? // client or business owner
+  owner          User?         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  skills         String[]      @default([])
+  status         String        @default("OPEN")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  proposals Proposal[]
+  contracts Contract[]
+}
+
+model Proposal {
+  id           Int       @id @default(autoincrement())
+  projectId    Int
+  freelancerId Int?
+  message      String?
+  amountCents  Int?
+  status       String    @default("PENDING")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  freelancer User?   @relation(fields: [freelancerId], references: [id], onDelete: Restrict)
+}
+
+model Contract {
+  id           Int       @id @default(autoincrement())
+  projectId    Int
+  freelancerId Int?
+  clientId     Int?
+  terms        String?
+  startDate    DateTime?
+  endDate      DateTime?
+  status       String    @default("ACTIVE")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  freelancer User?      @relation(fields: [freelancerId], references: [id], onDelete: Restrict)
+  client     User?      @relation("ContractClient", fields: [clientId], references: [id], onDelete: Restrict)
+  deliveries Delivery[]
+}
+
+model Delivery {
+  id          Int       @id @default(autoincrement())
+  contractId  Int
+  description String?
+  deliveredAt DateTime  @default(now())
+  files       Json?
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+}
+
+model UserSkill {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  name      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+/////////////////////////
+// BUSINESS INTELLIGENCE: DATASETS, DASHBOARDS, WIDGETS, INSIGHTS, ML MODELS
+/////////////////////////
+
+model Dataset {
+  id               Int           @id @default(autoincrement())
+  name             String
+  slug             String        @unique
+  description      String?
+  userId           Int?
+  organizationId   Int?
+  sourceType       String // 'csv', 'google_sheet', 'api', 'manual'
+  sourceUrl        String?
+  filePath         String?
+  schema_          Json?
+  previewRows      Json?
+  metadata         Json? // summary stats, types, missing values
+  processingStatus DatasetStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  ownerUser    User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  widgets        Widget[]
+  dashboardLinks DashboardDataset[]
+  mlModels       MLModel[]
+
+  @@index([processingStatus])
+}
+
+model Dashboard {
+  id             Int       @id @default(autoincrement())
+  title          String
+  slug           String    @unique
+  description    String?
+  ownerId        Int?
+  organizationId Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  ownerUser    User?         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  widgets      Widget[]
+  datasetLinks DashboardDataset[]
+  insights     Insight[]
+}
+
+model DashboardDataset {
+  id          Int      @id @default(autoincrement())
+  dashboardId Int
+  datasetId   Int
+  addedAt     DateTime @default(now())
+
+  dashboard Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Restrict)
+  dataset   Dataset   @relation(fields: [datasetId], references: [id], onDelete: Restrict)
+
+  @@unique([dashboardId, datasetId])
+}
+
+model Widget {
+  id          Int        @id @default(autoincrement())
+  dashboardId Int?
+  datasetId   Int?
+  type        WidgetType
+  config      Json
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  dashboard Dashboard? @relation(fields: [dashboardId], references: [id], onDelete: Restrict)
+  dataset   Dataset?   @relation(fields: [datasetId], references: [id], onDelete: Restrict)
+}
+
+model Insight {
+  id          Int       @id @default(autoincrement())
+  dashboardId Int
+  userId      Int?
+  content     String
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  dashboard Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Restrict)
+  author    User?     @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model MLModel {
+  id        Int       @id @default(autoincrement())
+  datasetId Int
+  creatorId Int?
+  name      String
+  type      String // regression, forecasting, classification
+  modelPath String? // S3 path to serialized model
+  metrics   Json?
+  params    Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Restrict)
+  creator User?   @relation("MLModelCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+}
+
+/////////////////////////
+// PAYMENTS, SUBSCRIPTIONS, NOTIFICATIONS, AUTH, FILES, AUDIT
+/////////////////////////
+
+model Transaction {
+  id             Int           @id @default(autoincrement())
+  userId         Int?
+  organizationId Int?
+  amountCents    Int
+  currency       String        @default("USD")
+  type           String // subscription, module_purchase, project_payment, credit_topup
+  status         PaymentStatus @default(PENDING)
+  providerData   Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+}
+
+model Subscription {
+  id             Int              @id @default(autoincrement())
+  userId         Int?
+  organizationId Int?
+  plan           SubscriptionPlan @default(FREE)
+  active         Boolean          @default(true)
+  startedAt      DateTime         @default(now())
+  endsAt         DateTime?
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+}
+
+model Notification {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  type        String
+  title       String?
+  body        String
+  data        Json?
+  isRead      Boolean   @default(false)
+  emailSent   Boolean   @default(false)
+  emailSentAt DateTime?
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model AuthToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  token     String    @unique
+  type      String // verification, password_reset, phone_otp
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model File {
+  id         Int       @id @default(autoincrement())
+  path       String
+  size       Int?
+  mimeType   String?
+  uploadedBy Int?
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+
+  uploader User? @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  action    String
+  model     String?
+  recordId  String?
+  changes   Json?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+}

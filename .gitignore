@@ -1,0 +1,40 @@
+# === Node & Next.js ===
+node_modules/
+.next/
+out/
+dist/
+.vercel/
+
+# === Python / FastAPI ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.env
+.env.local
+services/api/.env
+services/api/venv/
+venv/
+
+# === System & Editor files ===
+.DS_Store
+Thumbs.db
+*.log
+
+# === Build artifacts ===
+build/
+coverage/
+*.egg-info/
+*.bak
+
+# === Project-specific ===
+services/api/podacium/
+apps/web/.env.local
+
+# === Misc ===
+*.swp
+*.swo
+*.tmp
+
