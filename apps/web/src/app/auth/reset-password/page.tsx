@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
@@ -6,8 +5,10 @@ import Link from 'next/link'
 import Head from 'next/head'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import Navbar from '../../../components/Navbar'
 import Footer from '../../../components/Footer'
+import { authService } from '@/services/auth'
 
 // =============================================================================
 // TYPES AND INTERFACES
@@ -29,11 +30,7 @@ interface ApiError {
 }
 
 // =============================================================================
-// CUSTOM HOOKS
-// =============================================================================
-
-// =============================================================================
-// REUSABLE COMPONENTS
+// REUSABLE COMPONENTS (Matching login page styling)
 // =============================================================================
 
 interface ButtonProps {
@@ -248,14 +245,12 @@ const Input: React.FC<InputProps> = ({
 }
 
 // =============================================================================
-// SECTION COMPONENTS
+// HERO SECTION (Matching login page style)
 // =============================================================================
-
-
 
 const ResetHero: React.FC = () => {
   return (
-    <section className="relative bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden pt-40">
+    <section className="relative bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden pt-32">
       <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
       
       {/* Background decorations */}
@@ -263,19 +258,19 @@ const ResetHero: React.FC = () => {
       <div className="absolute top-40 right-20 w-32 h-32 bg-purple-200 rounded-full opacity-30 blur-2xl"></div>
       <div className="absolute bottom-20 left-1/3 w-24 h-24 bg-indigo-200 rounded-full opacity-40 blur-xl"></div>
       
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="text-center">
           <motion.h1 
-            className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight"
+            className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            Reset Your <span className="text-blue-600 mt-2">Password</span>
+            Reset Your <span className="text-blue-600">Password</span>
           </motion.h1>
           
           <motion.p 
-            className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed"
+            className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -284,7 +279,7 @@ const ResetHero: React.FC = () => {
           </motion.p>
           
           <motion.div 
-            className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center"
+            className="mt-6 flex flex-col sm:flex-row gap-4 justify-center items-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -316,19 +311,9 @@ const ResetHero: React.FC = () => {
   )
 }
 
-
-import { authService } from '@/services/auth'
-
-// Mock components
-
-interface ResetRequestFormData {
-  email: string
-}
-
-interface ResetConfirmFormData {
-  password: string
-  confirmPassword: string
-}
+// =============================================================================
+// CUSTOM HOOKS (Functionality preserved)
+// =============================================================================
 
 const useResetRequestForm = () => {
   const [formData, setFormData] = useState<ResetRequestFormData>({
@@ -438,10 +423,9 @@ const useResetConfirmForm = (token: string | null) => {
     
     if (!formData.password) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 6) { // Changed from 8 to 6 to match backend
+    } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters'
     }
-    // Removed complex password requirements to match backend
     
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match'
@@ -500,6 +484,10 @@ const useResetConfirmForm = (token: string | null) => {
   }
 }
 
+// =============================================================================
+// PASSWORD STRENGTH INDICATOR
+// =============================================================================
+
 interface PasswordStrengthIndicatorProps {
   password: string
 }
@@ -507,7 +495,7 @@ interface PasswordStrengthIndicatorProps {
 const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({ password }) => {
   const getStrength = (pwd: string): { score: number; label: string; color: string } => {
     let score = 0
-    if (pwd.length >= 6) score++ // Changed from 8 to 6
+    if (pwd.length >= 6) score++
     if (/[a-z]/.test(pwd)) score++
     if (/[A-Z]/.test(pwd)) score++
     if (/[0-9]/.test(pwd)) score++
@@ -553,296 +541,9 @@ const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({ p
   )
 }
 
-const ResetRequestForm: React.FC = () => {
-  const { formData, errors, loading, success, apiError, handleChange, handleSubmit } = useResetRequestForm()
-
-  if (success) {
-    return (
-      <Card className="max-w-md mx-auto p-8 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h2>
-        <p className="text-gray-600 mb-6">
-          We've sent a password reset link to <strong>{formData.email}</strong>. 
-          Please check your inbox and follow the instructions to reset your password.
-        </p>
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-            <p className="font-medium">Didn't receive the email?</p>
-            <ul className="mt-2 space-y-1">
-              <li className="flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-                </svg>
-                Check your spam folder
-              </li>
-              <li className="flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-                </svg>
-                Verify you entered the correct email
-              </li>
-              <li className="flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-                </svg>
-                Wait a few minutes and try again
-              </li>
-            </ul>
-          </div>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => window.location.reload()}
-          >
-            Try Another Email
-          </Button>
-          <Button
-            href="/auth/login"
-            variant="ghost"
-            className="w-full"
-          >
-            Back to Login
-          </Button>
-        </div>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="max-w-md mx-auto p-8">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Reset Your Password</h2>
-        <p className="text-gray-600">
-          Enter your email address and we'll send you a link to reset your password.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Input
-          label="Email Address"
-          type="email"
-          value={formData.email}
-          onChange={(value) => handleChange('email', value)}
-          error={errors.email}
-          placeholder="Enter your email address"
-          required
-          autoComplete="email"
-        />
-
-        {apiError && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm flex items-center">
-              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              {apiError}
-            </p>
-          </div>
-        )}
-
-        <Button
-          type="submit"
-          variant="primary"
-          loading={loading}
-          disabled={loading}
-          className="w-full py-3"
-        >
-          Send Reset Link
-        </Button>
-
-        <div className="text-center pt-4 border-t border-gray-200">
-          <p className="text-gray-600 text-sm">
-            Remember your password?{' '}
-            <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
-              Back to Login
-            </Link>
-          </p>
-        </div>
-      </form>
-    </Card>
-  )
-}
-
-const ResetConfirmForm: React.FC<{ token: string }> = ({ token }) => {
-  const { formData, errors, loading, success, apiError, tokenValid, tokenChecking, handleChange, handleSubmit } = useResetConfirmForm(token)
-
-  if (tokenChecking) {
-    return (
-      <Card className="max-w-md mx-auto p-8 text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Reset Link</h2>
-        <p className="text-gray-600">
-          Please wait while we verify your password reset link...
-        </p>
-      </Card>
-    )
-  }
-
-  if (!tokenValid) {
-    return (
-      <Card className="max-w-md mx-auto p-8 text-center">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Invalid Reset Link</h2>
-        <p className="text-gray-600 mb-4">
-          {apiError || 'This password reset link is invalid or has expired.'}
-        </p>
-        <p className="text-sm text-gray-500 mb-6">
-          Reset links expire after 24 hours for security reasons.
-        </p>
-        <div className="space-y-4">
-          <Button
-            href="/auth/reset"
-            variant="primary"
-            className="w-full"
-          >
-            Request New Reset Link
-          </Button>
-          <Button
-            href="/auth/login"
-            variant="ghost"
-            className="w-full"
-          >
-            Back to Login
-          </Button>
-        </div>
-      </Card>
-    )
-  }
-
-  if (success) {
-    return (
-      <Card className="max-w-md mx-auto p-8 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Password Reset Successful!</h2>
-        <p className="text-gray-600 mb-6">
-          Your password has been successfully reset. You can now log in with your new password.
-        </p>
-        <div className="space-y-4">
-          <Button
-            href="/auth/login"
-            variant="primary"
-            className="w-full py-3"
-          >
-            Continue to Login
-          </Button>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">
-            <p className="font-medium">Security Tip:</p>
-            <p className="mt-1">
-              Make sure to use a strong, unique password and enable two-factor authentication for added security.
-            </p>
-          </div>
-        </div>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="max-w-md mx-auto p-8">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Create New Password</h2>
-        <p className="text-gray-600">
-          Enter your new password below. Make sure it's strong and secure.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Input
-          label="New Password"
-          type="password"
-          value={formData.password}
-          onChange={(value) => handleChange('password', value)}
-          error={errors.password}
-          placeholder="Enter your new password"
-          required
-          autoComplete="new-password"
-        />
-
-        <PasswordStrengthIndicator password={formData.password} />
-
-        <Input
-          label="Confirm Password"
-          type="password"
-          value={formData.confirmPassword}
-          onChange={(value) => handleChange('confirmPassword', value)}
-          error={errors.confirmPassword}
-          placeholder="Confirm your new password"
-          required
-          autoComplete="new-password"
-        />
-
-        {apiError && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm flex items-center">
-              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              {apiError}
-            </p>
-          </div>
-        )}
-
-        <Button
-          type="submit"
-          variant="primary"
-          loading={loading}
-          disabled={loading}
-          className="w-full py-3"
-        >
-          Reset Password
-        </Button>
-
-        <div className="text-center pt-4 border-t border-gray-200">
-          <p className="text-gray-600 text-sm">
-            Remember your password?{' '}
-            <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
-              Back to Login
-            </Link>
-          </p>
-        </div>
-      </form>
-    </Card>
-  )
-}
-
-const ResetProcess: React.FC = () => {
-  const searchParams = useSearchParams()
-  const token = searchParams?.get('token') || null
-
-  return (
-    <section className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {token ? <ResetConfirmForm token={token} /> : <ResetRequestForm />}
-      </div>
-    </section>
-  )
-}
+// =============================================================================
+// SECURITY FEATURES SECTION
+// =============================================================================
 
 const SecurityFeatures: React.FC = () => {
   const features = [
@@ -861,7 +562,7 @@ const SecurityFeatures: React.FC = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
       ),
-      title: "24-Hour Link Expiry", // Updated from 1 hour to 24 hours
+      title: "24-Hour Link Expiry",
       description: "Reset links expire automatically after 24 hours for your security."
     },
     {
@@ -902,7 +603,18 @@ const SecurityFeatures: React.FC = () => {
 }
 
 // =============================================================================
-// MAIN PAGE COMPONENT
+// MAIN COMPONENT WITH SUSPENSE
+// =============================================================================
+
+function ResetProcessContent() {
+  const searchParams = useSearchParams()
+  const token = searchParams?.get('token') || null
+
+  return token ? <ResetConfirmForm token={token} /> : <ResetRequestForm />
+}
+
+// =============================================================================
+// MAIN PAGE COMPONENT - ENHANCED SPACING & PADDING
 // =============================================================================
 
 export default function ResetPasswordPage() {
@@ -914,10 +626,10 @@ export default function ResetPasswordPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <p className="text-gray-600 text-lg">Loading...</p>
         </div>
       </div>
     )
@@ -935,14 +647,379 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-white">
         <Navbar />
         
-        <main>
-          <ResetHero />
-          <ResetProcess />
+        <main className="py-8 lg:py-12">
+          <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-16">
+              <div className="text-center p-8">
+                <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                <p className="text-gray-600 text-lg">Loading reset form...</p>
+              </div>
+            </div>
+          }>
+            <ResetProcessContent />
+          </Suspense>
           <SecurityFeatures />
         </main>
 
         <Footer />
       </div>
     </>
+  )
+}
+
+// =============================================================================
+// UPDATED FORM COMPONENTS WITH PERFECT SPACING
+// =============================================================================
+
+const ResetRequestForm: React.FC = () => {
+  const { formData, errors, loading, success, apiError, handleChange, handleSubmit } = useResetRequestForm()
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <ResetHero />
+        {/* REMOVED negative margin and enhanced padding */}
+        <div className="py-16 lg:py-20">
+          <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card className="p-8 lg:p-10 text-center"> {/* Enhanced padding */}
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Check Your Email</h2>
+                <p className="text-gray-600 mb-8 text-sm lg:text-base leading-relaxed">
+                  We've sent a password reset link to <strong className="text-blue-600">{formData.email}</strong>. 
+                  Please check your inbox and follow the instructions to reset your password.
+                </p>
+                <div className="space-y-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 lg:p-6 text-left"> {/* Enhanced padding */}
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-blue-700 text-sm font-medium mb-3">Didn't receive the email?</p> {/* Increased margin */}
+                        <ul className="text-blue-600 text-sm space-y-2"> {/* Better spacing */}
+                          <li className="flex items-center">
+                            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                            </svg>
+                            Check your spam folder
+                          </li>
+                          <li className="flex items-center">
+                            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                            </svg>
+                            Verify you entered the correct email
+                          </li>
+                          <li className="flex items-center">
+                            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                            </svg>
+                            Wait a few minutes and try again
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <Button
+                      variant="outline"
+                      className="w-full py-3"
+                      onClick={() => window.location.reload()}
+                    >
+                      Try Another Email
+                    </Button>
+                    <Button
+                      href="/auth/login"
+                      variant="ghost"
+                      className="w-full py-3"
+                    >
+                      Back to Login
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <ResetHero />
+      {/* REMOVED negative margin and enhanced padding */}
+      <div className="py-16 lg:py-20">
+        <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="p-8 lg:p-10"> {/* Enhanced padding */}
+              <div className="text-center mb-8"> {/* Increased margin */}
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-3">Reset Your Password</h2> {/* Enhanced spacing */}
+                <p className="text-gray-600 text-sm lg:text-base">
+                  Enter your email address and we'll send you a link to reset your password.
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-6"> {/* Increased spacing */}
+                <Input
+                  label="Email Address"
+                  type="email"
+                  value={formData.email}
+                  onChange={(value) => handleChange('email', value)}
+                  error={errors.email}
+                  placeholder="Enter your email address"
+                  required
+                  autoComplete="email"
+                />
+
+                {apiError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-red-600 text-sm">{apiError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  loading={loading}
+                  disabled={loading}
+                  className="w-full py-3"
+                >
+                  Send Reset Link
+                </Button>
+
+                <div className="text-center pt-6 border-t border-gray-200"> {/* Increased padding */}
+                  <p className="text-gray-600 text-sm">
+                    Remember your password?{' '}
+                    <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
+                      Back to Login
+                    </Link>
+                  </p>
+                </div>
+              </form>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const ResetConfirmForm: React.FC<{ token: string }> = ({ token }) => {
+  const { formData, errors, loading, success, apiError, tokenValid, tokenChecking, handleChange, handleSubmit } = useResetConfirmForm(token)
+
+  if (tokenChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <ResetHero />
+        {/* REMOVED negative margin and enhanced padding */}
+        <div className="py-16 lg:py-20">
+          <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+            <Card className="p-8 lg:p-10 text-center"> {/* Enhanced padding */}
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6"> {/* Increased margin */}
+                <svg className="w-8 h-8 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Verifying Reset Link</h2> {/* Enhanced spacing */}
+              <p className="text-gray-600 text-sm lg:text-base">
+                Please wait while we verify your password reset link...
+              </p>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!tokenValid) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <ResetHero />
+        {/* REMOVED negative margin and enhanced padding */}
+        <div className="py-16 lg:py-20">
+          <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+            <Card className="p-8 lg:p-10 text-center"> {/* Enhanced padding */}
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6"> {/* Increased margin */}
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Invalid Reset Link</h2> {/* Enhanced spacing */}
+              <p className="text-gray-600 mb-6 text-sm lg:text-base">
+                {apiError || 'This password reset link is invalid or has expired.'}
+              </p>
+              <p className="text-sm text-gray-500 mb-8">
+                Reset links expire after 24 hours for security reasons.
+              </p>
+              <div className="space-y-4">
+                <Button
+                  href="/auth/reset"
+                  className="w-full py-3"
+                >
+                  Request New Reset Link
+                </Button>
+                <Button
+                  href="/auth/login"
+                  variant="ghost"
+                  className="w-full py-3"
+                >
+                  Back to Login
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <ResetHero />
+        {/* REMOVED negative margin and enhanced padding */}
+        <div className="py-16 lg:py-20">
+          <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+            <Card className="p-8 lg:p-10 text-center"> {/* Enhanced padding */}
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Password Reset Successful!</h2>
+              <p className="text-gray-600 mb-8 text-sm lg:text-base">
+                Your password has been successfully reset. You can now log in with your new password.
+              </p>
+              <div className="space-y-6">
+                <Button
+                  href="/auth/login"
+                  className="w-full py-3"
+                >
+                  Continue to Login
+                </Button>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 lg:p-6 text-sm text-green-700"> {/* Enhanced padding */}
+                  <p className="font-medium">Security Tip:</p>
+                  <p className="mt-2"> {/* Increased margin */}
+                    Make sure to use a strong, unique password and enable two-factor authentication for added security.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <ResetHero />
+      {/* REMOVED negative margin and enhanced padding */}
+      <div className="py-16 lg:py-20">
+        <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+          <Card className="p-8 lg:p-10"> {/* Enhanced padding */}
+            <div className="text-center mb-8"> {/* Increased margin */}
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-3">Create New Password</h2> {/* Enhanced spacing */}
+              <p className="text-gray-600 text-sm lg:text-base">
+                Enter your new password below. Make sure it's strong and secure.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6"> {/* Increased spacing */}
+              <Input
+                label="New Password"
+                type="password"
+                value={formData.password}
+                onChange={(value) => handleChange('password', value)}
+                error={errors.password}
+                placeholder="Enter your new password"
+                required
+                autoComplete="new-password"
+              />
+
+              <PasswordStrengthIndicator password={formData.password} />
+
+              <Input
+                label="Confirm Password"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(value) => handleChange('confirmPassword', value)}
+                error={errors.confirmPassword}
+                placeholder="Confirm your new password"
+                required
+                autoComplete="new-password"
+              />
+
+              {apiError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-red-600 text-sm">{apiError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={loading}
+                className="w-full py-3"
+              >
+                Reset Password
+              </Button>
+
+              <div className="text-center pt-6 border-t border-gray-200"> {/* Increased padding */}
+                <p className="text-gray-600 text-sm">
+                  Remember your password?{' '}
+                  <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
+                    Back to Login
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </Card>
+        </div>
+      </div>
+    </div>
   )
 }

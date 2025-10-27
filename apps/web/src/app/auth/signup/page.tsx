@@ -24,7 +24,6 @@ interface BenefitCard {
 // MOCK DATA
 // =============================================================================
 
-
 const BENEFITS: BenefitCard[] = [
   {
     id: '1',
@@ -138,7 +137,6 @@ const BENEFITS: BenefitCard[] = [
     ]
   }
 ]
-
 
 // =============================================================================
 // CUSTOM HOOKS
@@ -658,7 +656,6 @@ const useSocialAuth = () => {
   }
 }
 
-
 interface SuccessMessageProps {
   email: string
   verificationSent: boolean
@@ -683,70 +680,181 @@ const SuccessMessage: React.FC<SuccessMessageProps> = ({ email, verificationSent
   }
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto text-center">
-        <Card className="p-8">
-          <div className="text-green-500 text-6xl mb-4">🎉</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Created Successfully!</h2>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Hero Section matching login page style */}
+      <section className="relative bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden pt-32">
+        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
+        
+        {/* Background decorations */}
+        <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200 rounded-full opacity-50 blur-xl"></div>
+        <div className="absolute top-40 right-20 w-32 h-32 bg-purple-200 rounded-full opacity-30 blur-2xl"></div>
+        <div className="absolute bottom-20 left-1/3 w-24 h-24 bg-indigo-200 rounded-full opacity-40 blur-xl"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+          <div className="text-center">
+            <motion.h1 
+              className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              Welcome to <span className="text-blue-600">Podacium</span>
+            </motion.h1>
+            
+            <motion.p 
+              className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              Your data transformation journey begins now. Get ready to unlock powerful insights and grow your skills.
+            </motion.p>
+          </div>
+        </div>
+      </section>
 
-          {verificationSent ? (
-            <>
-              <p className="text-gray-600 mb-4">
-                We've sent a verification email to <strong>{email}</strong>.
-              </p>
-              <p className="text-gray-600 mb-6">
-                Please check your inbox and click the verification link to activate your account.
-              </p>
-
-              {resendSuccess && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-green-800 font-medium">Verification email sent successfully!</p>
-                </div>
-              )}
-
-              {resendError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-red-800 font-medium">{resendError}</p>
-                </div>
-              )}
-
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-6">
-                <p className="text-blue-700 text-sm mb-2">
-                  <strong>Didn't receive the email?</strong> Check your spam folder or{' '}
-                  <button
-                    onClick={handleResendVerification}
-                    disabled={resending || resendSuccess}
-                    className="text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {resending ? 'Sending...' : resendSuccess ? 'Email sent!' : 'resend verification email'}
-                  </button>
-                  .
-                </p>
+      {/* Success Content - REMOVED negative margin and enhanced spacing/width */}
+      <div className="py-16 lg:py-20">
+        {/* EXPANDED width from max-w-md to max-w-lg for better content fit */}
+        <div className="max-w-lg mx-auto px-4 sm:px-6 lg:px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            {/* Enhanced padding and spacing */}
+            <Card className="p-8 lg:p-10 text-center">
+              {/* Success Icon with better spacing */}
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
               </div>
+              
+              {/* Header with enhanced spacing */}
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Account Created Successfully!</h2>
 
-              <Button
-                onClick={() => (window.location.href = '/auth/login')}
-                className="w-full"
-              >
-                Go to Login
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-gray-600 mb-6">
-                Your account has been created successfully! You can now sign in and start using Podacium.
-              </p>
-              <Button
-                onClick={() => (window.location.href = '/auth/login')}
-                className="w-full"
-              >
-                Continue to Login
-              </Button>
-            </>
-          )}
-        </Card>
+              {verificationSent ? (
+                <>
+                  {/* Enhanced text spacing and responsive sizing */}
+                  <p className="text-gray-600 mb-4 text-sm lg:text-base leading-relaxed">
+                    We've sent a verification email to <strong className="text-blue-600">{email}</strong>.
+                  </p>
+                  <p className="text-gray-600 mb-8 text-sm lg:text-base leading-relaxed">
+                    Please check your inbox and click the verification link to activate your account and unlock all features.
+                  </p>
+
+                  {/* Enhanced alert spacing */}
+                  {resendSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-green-800 text-sm font-medium">Verification email sent successfully!</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {resendError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-red-800 text-sm font-medium">{resendError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Enhanced info box spacing */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 lg:p-6 mb-8">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-blue-700 text-sm lg:text-base">
+                          <strong>Didn't receive the email?</strong> Check your spam folder or{' '}
+                          <button
+                            onClick={handleResendVerification}
+                            disabled={resending || resendSuccess}
+                            className="text-blue-600 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {resending ? (
+                              <span className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Sending...
+                              </span>
+                            ) : resendSuccess ? (
+                              'Email sent!'
+                            ) : (
+                              'resend verification email'
+                            )}
+                          </button>
+                          .
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enhanced button spacing and padding */}
+                  <div className="space-y-4">
+                    <Button
+                      onClick={() => (window.location.href = '/auth/login')}
+                      className="w-full py-3"
+                    >
+                      Go to Login
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => (window.location.href = '/')}
+                      className="w-full py-3"
+                    >
+                      Explore Platform
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-600 mb-8 text-sm lg:text-base leading-relaxed">
+                    Your account has been created successfully! You can now sign in and start using all the powerful features of Podacium.
+                  </p>
+                  <div className="space-y-4">
+                    <Button
+                      onClick={() => (window.location.href = '/auth/login')}
+                      className="w-full py-3"
+                    >
+                      Continue to Login
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => (window.location.href = '/')}
+                      className="w-full py-3"
+                    >
+                      Explore Features
+                    </Button>
+                  </div>
+                </>
+              )}
+            </Card>
+          </motion.div>
+        </div>
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -768,12 +876,14 @@ interface SignupErrors {
   submit?: string
 }
 
-export const SignupFormSection: React.FC = () => {
+interface SignupFormSectionProps {
+  onSignupSuccess: (email: string, verificationSent: boolean) => void
+}
+
+export const SignupFormSection: React.FC<SignupFormSectionProps> = ({ onSignupSuccess }) => {
   const { loading: socialLoading, error: socialError, handleSocialSignup } = useSocialAuth()
   const [activeTab, setActiveTab] = useState<'email' | 'social'>('email')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [verificationSent, setVerificationSent] = useState(false)
   const [formData, setFormData] = useState<SignupFormData>({
     fullName: '',
     email: '',
@@ -844,8 +954,8 @@ export const SignupFormSection: React.FC = () => {
         role: 'STUDENT'
       })
 
-      setVerificationSent(result.verification_sent)
-      setSuccess(true)
+      // Call the success callback with the necessary data
+      onSignupSuccess(formData.email, result.verification_sent)
     } catch (error: any) {
       console.error('Signup error:', error)
       
@@ -860,10 +970,6 @@ export const SignupFormSection: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (success) {
-    return <SuccessMessage email={formData.email} verificationSent={verificationSent} />
   }
 
   return (
@@ -1203,6 +1309,35 @@ const FinalCTASection: React.FC = () => {
 // =============================================================================
 
 export default function SignupPage() {
+  const [signupSuccess, setSignupSuccess] = useState(false)
+  const [successData, setSuccessData] = useState<{email: string; verificationSent: boolean} | null>(null)
+
+  const handleSignupSuccess = (email: string, verificationSent: boolean) => {
+    setSignupSuccess(true)
+    setSuccessData({ email, verificationSent })
+  }
+
+  // If signup was successful, only show the success message
+  if (signupSuccess && successData) {
+    return (
+      <>
+        <Head>
+          <title>Account Created | Podacium - Data Learning Platform</title>
+          <meta name="description" content="Your Podacium account has been created successfully. Welcome to our data learning platform!" />
+        </Head>
+
+        <div className="min-h-screen bg-white">
+          <Navbar />
+          <main>
+            <SuccessMessage email={successData.email} verificationSent={successData.verificationSent} />
+          </main>
+          <Footer />
+        </div>
+      </>
+    )
+  }
+
+  // Normal signup page layout
   return (
     <>
       <Head>
@@ -1215,7 +1350,7 @@ export default function SignupPage() {
         
         <main>
           <SignupHero />
-          <SignupFormSection />
+          <SignupFormSection onSignupSuccess={handleSignupSuccess} />
           <BenefitsSection />
           <FinalCTASection />
         </main>
