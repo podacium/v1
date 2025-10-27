@@ -35,41 +35,47 @@ app.add_middleware(
 
 async def ensure_prisma_engine():
     """Ensure Prisma query engine is available before connecting"""
-    max_retries = 3
+    max_retries = 2
+    
+    # First, try to set up the engine path
+    from app.core.prisma_fix import setup_prisma_engine
+    setup_prisma_engine()
+    
     for attempt in range(max_retries):
         try:
             print(f"🔄 Attempt {attempt + 1}/{max_retries}: Testing Prisma engine...")
             
+            # Import here to avoid circular imports
+            from prisma import Prisma
+            
             # Try to connect to check if engine works
-            await prisma.connect()
-            print("✅ Prisma engine is working")
+            db = Prisma()
+            await db.connect()
+            
+            # Test a simple query
+            user_count = await db.user.count()
+            print(f"✅ Prisma engine is working (found {user_count} users)")
+            
+            await db.disconnect()
             return True
             
         except Exception as e:
             print(f"❌ Prisma engine issue (attempt {attempt + 1}): {e}")
             
             if attempt < max_retries - 1:
-                print("🔄 Attempting to fetch Prisma engine...")
+                print("🔄 Attempting manual engine setup...")
                 try:
-                    # Try to fetch the engine
-                    result = subprocess.run([
-                        sys.executable, "-m", "prisma", "py", "fetch"
-                    ], capture_output=True, text=True, timeout=60)
+                    # Try manual engine setup
+                    from app.core.prisma_fix import setup_prisma_engine, verify_prisma_engine
+                    setup_prisma_engine()
                     
-                    if result.returncode == 0:
-                        print("✅ Prisma engine fetched successfully")
-                    else:
-                        print(f"⚠️ Prisma fetch output: {result.stdout}")
-                        print(f"⚠️ Prisma fetch error: {result.stderr}")
-                        
-                except subprocess.TimeoutExpired:
-                    print("❌ Prisma fetch timed out")
-                except Exception as fetch_error:
-                    print(f"❌ Prisma fetch failed: {fetch_error}")
+                    # Give it a moment
+                    import time
+                    time.sleep(2)
+                    
+                except Exception as setup_error:
+                    print(f"❌ Manual setup failed: {setup_error}")
             
-            # Wait before retry
-            time.sleep(2)
-    
     print("❌ All attempts to initialize Prisma engine failed")
     return False
 
