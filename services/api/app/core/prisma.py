@@ -9,22 +9,23 @@ prisma = Prisma()
 async def connect_prisma():
     """Connect to the database"""
     try:
-        await prisma.connect()
+        if not await prisma.is_connected():
+            await prisma.connect()
         logger.info("✅ Database connected successfully")
+        return True
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
-        # Don't raise for now to allow app to start
-        # raise
+        # Don't raise to allow app to start without DB
+        return False
 
 async def disconnect_prisma():
     """Disconnect from the database"""
     try:
-        await prisma.disconnect()
-        logger.info("✅ Database disconnected successfully")
+        if await prisma.is_connected():
+            await prisma.disconnect()
+            logger.info("✅ Database disconnected successfully")
     except Exception as e:
         logger.error(f"❌ Database disconnection failed: {e}")
-        # Don't raise for now
-        # raise
 
 async def get_prisma():
     """Get Prisma instance"""
