@@ -7,7 +7,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-import glob
 
 from app.core.config import settings
 from app.core.prisma import connect_prisma, disconnect_prisma, prisma
@@ -35,162 +34,118 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def find_prisma_engine():
-    """Find Prisma engine binary using multiple methods"""
-    print("🔍 Searching for Prisma engine...")
-    
-    # Method 1: Check common cache locations
-    cache_patterns = [
-        "/opt/render/.cache/prisma-python/binaries/*/prisma-query-engine-*",
-        "/root/.cache/prisma-python/binaries/*/prisma-query-engine-*",
-        os.path.expanduser("~/.cache/prisma-python/binaries/*/prisma-query-engine-*"),
-    ]
-    
-    for pattern in cache_patterns:
-        matches = glob.glob(pattern)
-        for match in matches:
-            if os.path.exists(match) and os.access(match, os.X_OK):
-                print(f"✅ Found engine via pattern: {match}")
-                return match
-    
-    # Method 2: Search in entire filesystem for the engine (limited scope)
-    search_paths = [
-        "/opt/render/.cache/",
-        "/root/.cache/",
-        "/tmp/",
-        os.getcwd(),
-    ]
-    
-    for search_path in search_paths:
-        if os.path.exists(search_path):
-            try:
-                for root, dirs, files in os.walk(search_path):
-                    for file in files:
-                        if file.startswith("prisma-query-engine-"):
-                            full_path = os.path.join(root, file)
-                            if os.access(full_path, os.X_OK):
-                                print(f"✅ Found engine via filesystem search: {full_path}")
-                                return full_path
-            except Exception as e:
-                print(f"⚠️ Search in {search_path} failed: {e}")
-    
-    # Method 3: Use prisma CLI to find the engine
-    try:
-        result = subprocess.run([
-            sys.executable, "-m", "prisma", "py", "debug"
-        ], capture_output=True, text=True, timeout=30)
-        
-        if result.returncode == 0:
-            # Parse the debug output to find engine path
-            for line in result.stdout.split('\n'):
-                if 'engine' in line.lower() and 'path' in line.lower():
-                    print(f"🔧 Debug info: {line}")
-    except Exception as e:
-        print(f"⚠️ Prisma debug failed: {e}")
-    
-    return None
-
 def setup_prisma_engine():
-    """Ensure Prisma engine is properly set up with correct paths"""
+    """Set up Prisma engine with known path from build"""
     print("🔧 Setting up Prisma engine...")
     
-    # First, try to find existing engine
-    engine_path = find_prisma_engine()
+    # Known path from build logs
+    engine_path = "/opt/render/.cache/prisma-python/binaries/5.4.2/ac9d7041ed77bcc8a8dbd2ab6616b39013829574/prisma-query-engine-debian-openssl-3.0.x"
     
-    if engine_path:
-        os.environ["PRISMA_QUERY_ENGINE_BINARY"] = engine_path
-        print(f"✅ Using Prisma engine: {engine_path}")
-        return True
-    
-    # If no engine found, fetch it
-    print("🔄 No engine found, fetching Prisma engine...")
-    try:
-        # Force fetch with explicit output
-        result = subprocess.run([
-            sys.executable, "-m", "prisma", "py", "fetch", "--force"
-        ], capture_output=True, text=True, timeout=120)
-        
-        print(f"📦 Fetch stdout: {result.stdout}")
-        if result.stderr:
-            print(f"📦 Fetch stderr: {result.stderr}")
-        
-        if result.returncode == 0:
-            print("✅ Prisma engine fetched successfully")
-            
-            # Try to find the engine again after fetch
-            engine_path = find_prisma_engine()
-            if engine_path:
-                os.environ["PRISMA_QUERY_ENGINE_BINARY"] = engine_path
-                print(f"✅ Using fetched Prisma engine: {engine_path}")
-                return True
-            else:
-                print("❌ Engine fetched but still not found")
+    # Check if engine exists at known location
+    if os.path.exists(engine_path):
+        if os.access(engine_path, os.X_OK):
+            os.environ["PRISMA_QUERY_ENGINE_BINARY"] = engine_path
+            print(f"✅ Using Prisma engine from build cache: {engine_path}")
+            return True
         else:
-            print(f"❌ Prisma fetch failed with code: {result.returncode}")
-            
-    except subprocess.TimeoutExpired:
-        print("❌ Prisma fetch timed out")
+            print(f"⚠️ Engine exists but not executable: {engine_path}")
+            # Try to make it executable
+            try:
+                os.chmod(engine_path, 0o755)
+                if os.access(engine_path, os.X_OK):
+                    os.environ["PRISMA_QUERY_ENGINE_BINARY"] = engine_path
+                    print(f"✅ Made engine executable: {engine_path}")
+                    return True
+            except Exception as e:
+                print(f"❌ Failed to make engine executable: {e}")
+    else:
+        print(f"❌ Engine not found at expected path: {engine_path}")
+        
+        # Try alternative locations
+        alternative_paths = [
+            # Check current directory
+            "./prisma-query-engine-debian-openssl-3.0.x",
+            # Check in app directory
+            "./app/prisma-query-engine-debian-openssl-3.0.x",
+            # Check in generated directory
+            "./app/generated/prisma/prisma-query-engine-debian-openssl-3.0.x",
+        ]
+        
+        for alt_path in alternative_paths:
+            if os.path.exists(alt_path) and os.access(alt_path, os.X_OK):
+                os.environ["PRISMA_QUERY_ENGINE_BINARY"] = alt_path
+                print(f"✅ Using Prisma engine from alternative location: {alt_path}")
+                return True
+    
+    # Last resort: try to copy from build cache to current directory
+    print("🔄 Attempting to locate engine in filesystem...")
+    try:
+        # Use find command to locate the engine
+        result = subprocess.run([
+            "find", "/opt/render", "-name", "prisma-query-engine-debian-openssl-3.0.x", "-type", "f"
+        ], capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            found_paths = result.stdout.strip().split('\n')
+            for found_path in found_paths:
+                if os.path.exists(found_path) and os.access(found_path, os.X_OK):
+                    os.environ["PRISMA_QUERY_ENGINE_BINARY"] = found_path
+                    print(f"✅ Found Prisma engine via find: {found_path}")
+                    return True
     except Exception as e:
-        print(f"❌ Prisma fetch error: {e}")
+        print(f"⚠️ Find command failed: {e}")
     
     return False
 
 async def ensure_prisma_engine():
-    """Ensure Prisma query engine is available before connecting"""
-    max_retries = 2
+    """Ensure Prisma query engine is available"""
+    print("🔄 Testing Prisma engine...")
     
-    # First, try to set up the engine path
+    # Set up engine path
     engine_setup = setup_prisma_engine()
     
-    for attempt in range(max_retries):
-        try:
-            print(f"🔄 Attempt {attempt + 1}/{max_retries}: Testing Prisma engine...")
-            
-            # Try to connect to check if engine works
-            await prisma.connect()
-            
-            # Test a simple query
-            user_count = await prisma.user.count()
-            print(f"✅ Prisma engine is working (found {user_count} users)")
-            
-            await prisma.disconnect()
-            return True
-            
-        except Exception as e:
-            print(f"❌ Prisma engine issue (attempt {attempt + 1}): {e}")
-            
-            if attempt < max_retries - 1:
-                print("🔄 Retrying engine setup...")
-                engine_setup = setup_prisma_engine()
-                time.sleep(3)
-            
-    print("❌ All attempts to initialize Prisma engine failed")
-    return False
+    if not engine_setup:
+        print("❌ Could not set up Prisma engine path")
+        return False
+    
+    try:
+        # Try to connect
+        await prisma.connect()
+        
+        # Test a simple query
+        user_count = await prisma.user.count()
+        print(f"✅ Prisma engine is working (found {user_count} users)")
+        
+        await prisma.disconnect()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Prisma engine test failed: {e}")
+        return False
 
 # Prisma startup/shutdown
 @app.on_event("startup")
 async def startup():
     print("🚀 Starting application...")
     
-    # First ensure Prisma engine is available
+    # Try to set up Prisma engine
     engine_ready = await ensure_prisma_engine()
     
-    if not engine_ready:
+    if engine_ready:
+        try:
+            # Connect properly
+            await connect_prisma()
+            print("✅ Database connected successfully")
+            
+            # Test the connection
+            user_count = await prisma.user.count()
+            print(f"📊 Database test: {user_count} users found")
+            
+        except Exception as e:
+            print(f"❌ Database connection failed: {e}")
+            print("⚠️ Application running in limited mode")
+    else:
         print("⚠️ Starting without database connection - some features may not work")
-        return
-    
-    try:
-        # Now try to connect properly
-        await connect_prisma()
-        print("✅ Database connected successfully")
-        
-        # Test the connection
-        user_count = await prisma.user.count()
-        print(f"📊 Database test: {user_count} users found")
-        
-    except Exception as e:
-        print(f"❌ Database connection failed: {e}")
-        print("⚠️ Application running in limited mode")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -249,63 +204,53 @@ async def health_check_render():
     """Health check endpoint for Render with minimal dependencies"""
     return {"status": "ok", "service": settings.APP_NAME}
 
-# Add this new debug endpoint to help diagnose the engine location
-@app.get("/api/debug/engine-search")
-async def debug_engine_search():
-    """Search for Prisma engine in various locations"""
-    import glob
+# Enhanced debug endpoint
+@app.get("/api/debug/engine-info")
+async def debug_engine_info():
+    """Get detailed Prisma engine information"""
+    import subprocess
     
-    search_results = {}
-    
-    # Search patterns
-    patterns = [
-        "/opt/render/.cache/prisma-python/binaries/*/prisma-query-engine-*",
-        "/root/.cache/prisma-python/binaries/*/prisma-query-engine-*",
-        "/tmp/prisma-query-engine-*",
-        "./prisma-query-engine-*",
-    ]
-    
-    for pattern in patterns:
-        matches = glob.glob(pattern)
-        search_results[pattern] = {
-            "matches": matches,
-            "exists": len(matches) > 0
-        }
-        for match in matches:
-            search_results[pattern]["details"] = {
-                "path": match,
-                "exists": os.path.exists(match),
-                "executable": os.access(match, os.X_OK),
-                "size": os.path.getsize(match) if os.path.exists(match) else 0
-            }
-    
-    # Also check environment
-    search_results["environment"] = {
-        "PRISMA_QUERY_ENGINE_BINARY": os.environ.get("PRISMA_QUERY_ENGINE_BINARY"),
-        "PWD": os.environ.get("PWD"),
-        "CWD": os.getcwd(),
+    info = {
+        "environment": {
+            "PRISMA_QUERY_ENGINE_BINARY": os.environ.get("PRISMA_QUERY_ENGINE_BINARY"),
+            "PWD": os.environ.get("PWD"),
+            "CWD": os.getcwd(),
+        },
+        "known_paths": {},
+        "find_results": None
     }
     
-    # List files in cache directory
-    cache_dirs = [
-        "/opt/render/.cache/prisma-python/",
-        "/root/.cache/prisma-python/",
+    # Check known paths
+    known_paths = [
+        "/opt/render/.cache/prisma-python/binaries/5.4.2/ac9d7041ed77bcc8a8dbd2ab6616b39013829574/prisma-query-engine-debian-openssl-3.0.x",
+        "./prisma-query-engine-debian-openssl-3.0.x",
+        "./app/prisma-query-engine-debian-openssl-3.0.x",
+        "./app/generated/prisma/prisma-query-engine-debian-openssl-3.0.x",
     ]
     
-    for cache_dir in cache_dirs:
-        if os.path.exists(cache_dir):
-            try:
-                files = []
-                for root, dirs, filenames in os.walk(cache_dir):
-                    for filename in filenames:
-                        files.append(os.path.join(root, filename))
-                search_results[f"cache_contents_{cache_dir}"] = files[:10]  # Limit output
-            except Exception as e:
-                search_results[f"cache_contents_{cache_dir}"] = f"Error: {e}"
+    for path in known_paths:
+        exists = os.path.exists(path)
+        info["known_paths"][path] = {
+            "exists": exists,
+            "executable": os.access(path, os.X_OK) if exists else False,
+            "size": os.path.getsize(path) if exists else 0
+        }
     
-    return search_results
+    # Try to find engine in filesystem
+    try:
+        result = subprocess.run([
+            "find", "/opt/render", "-name", "prisma-query-engine-*", "-type", "f", "-executable"
+        ], capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0:
+            info["find_results"] = result.stdout.strip().split('\n') if result.stdout.strip() else []
+    except Exception as e:
+        info["find_error"] = str(e)
+    
+    return info
 
-# ... (keep all your existing endpoints the same as before)
+# ... (keep all your existing endpoints the same)
+
 @app.get("/routes")
 async def get_routes():
     return [
@@ -344,7 +289,7 @@ async def register(user_data: SignupData):
 async def check_email(email: dict):
     return {"available": True}
 
-# ... (include all your other existing endpoints)
+# ... (include all your other endpoints)
 
 app.include_router(dashboard.router, prefix=api_prefix, tags=["Dashboard"])
     
