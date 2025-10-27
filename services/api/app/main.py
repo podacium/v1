@@ -1,3 +1,7 @@
+import os
+os.environ['PRISMA_USE_PYTHON_ENGINE'] = '1'
+
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
