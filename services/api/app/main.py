@@ -3,11 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import time
-import os
-import subprocess
-import sys
-from pathlib import Path
-
 from app.core.config import settings
 from app.core.prisma import connect_prisma, disconnect_prisma, prisma
 from app.core.security import get_password_hash, verify_password
@@ -34,126 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def setup_prisma_engine():
-    """Set up Prisma engine with known path from build"""
-    print("🔧 Setting up Prisma engine...")
-    
-    # Known path from build logs
-    engine_path = "/opt/render/.cache/prisma-python/binaries/5.4.2/ac9d7041ed77bcc8a8dbd2ab6616b39013829574/prisma-query-engine-debian-openssl-3.0.x"
-    
-    # Check if engine exists at known location
-    if os.path.exists(engine_path):
-        if os.access(engine_path, os.X_OK):
-            os.environ["PRISMA_QUERY_ENGINE_BINARY"] = engine_path
-            print(f"✅ Using Prisma engine from build cache: {engine_path}")
-            return True
-        else:
-            print(f"⚠️ Engine exists but not executable: {engine_path}")
-            # Try to make it executable
-            try:
-                os.chmod(engine_path, 0o755)
-                if os.access(engine_path, os.X_OK):
-                    os.environ["PRISMA_QUERY_ENGINE_BINARY"] = engine_path
-                    print(f"✅ Made engine executable: {engine_path}")
-                    return True
-            except Exception as e:
-                print(f"❌ Failed to make engine executable: {e}")
-    else:
-        print(f"❌ Engine not found at expected path: {engine_path}")
-        
-        # Try alternative locations
-        alternative_paths = [
-            # Check current directory
-            "./prisma-query-engine-debian-openssl-3.0.x",
-            # Check in app directory
-            "./app/prisma-query-engine-debian-openssl-3.0.x",
-            # Check in generated directory
-            "./app/generated/prisma/prisma-query-engine-debian-openssl-3.0.x",
-        ]
-        
-        for alt_path in alternative_paths:
-            if os.path.exists(alt_path) and os.access(alt_path, os.X_OK):
-                os.environ["PRISMA_QUERY_ENGINE_BINARY"] = alt_path
-                print(f"✅ Using Prisma engine from alternative location: {alt_path}")
-                return True
-    
-    # Last resort: try to copy from build cache to current directory
-    print("🔄 Attempting to locate engine in filesystem...")
-    try:
-        # Use find command to locate the engine
-        result = subprocess.run([
-            "find", "/opt/render", "-name", "prisma-query-engine-debian-openssl-3.0.x", "-type", "f"
-        ], capture_output=True, text=True, timeout=30)
-        
-        if result.returncode == 0 and result.stdout.strip():
-            found_paths = result.stdout.strip().split('\n')
-            for found_path in found_paths:
-                if os.path.exists(found_path) and os.access(found_path, os.X_OK):
-                    os.environ["PRISMA_QUERY_ENGINE_BINARY"] = found_path
-                    print(f"✅ Found Prisma engine via find: {found_path}")
-                    return True
-    except Exception as e:
-        print(f"⚠️ Find command failed: {e}")
-    
-    return False
-
-async def ensure_prisma_engine():
-    """Ensure Prisma query engine is available"""
-    print("🔄 Testing Prisma engine...")
-    
-    # Set up engine path
-    engine_setup = setup_prisma_engine()
-    
-    if not engine_setup:
-        print("❌ Could not set up Prisma engine path")
-        return False
-    
-    try:
-        # Try to connect
-        await prisma.connect()
-        
-        # Test a simple query
-        user_count = await prisma.user.count()
-        print(f"✅ Prisma engine is working (found {user_count} users)")
-        
-        await prisma.disconnect()
-        return True
-        
-    except Exception as e:
-        print(f"❌ Prisma engine test failed: {e}")
-        return False
-
 # Prisma startup/shutdown
 @app.on_event("startup")
 async def startup():
-    print("🚀 Starting application...")
-    
-    # Try to set up Prisma engine
-    engine_ready = await ensure_prisma_engine()
-    
-    if engine_ready:
-        try:
-            # Connect properly
-            await connect_prisma()
-            print("✅ Database connected successfully")
-            
-            # Test the connection
-            user_count = await prisma.user.count()
-            print(f"📊 Database test: {user_count} users found")
-            
-        except Exception as e:
-            print(f"❌ Database connection failed: {e}")
-            print("⚠️ Application running in limited mode")
-    else:
-        print("⚠️ Starting without database connection - some features may not work")
+    await connect_prisma()
 
 @app.on_event("shutdown")
 async def shutdown():
-    try:
-        await disconnect_prisma()
-        print("✅ Database disconnected")
-    except Exception as e:
-        print(f"⚠️ Error during shutdown: {e}")
+    await disconnect_prisma()
 
 # API prefix
 api_prefix = "/api"
@@ -175,34 +58,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Enhanced health check that tests database connectivity"""
-    try:
-        # Test database connection
-        db_status = "unknown"
-        try:
-            user_count = await prisma.user.count()
-            db_status = "healthy"
-        except Exception as e:
-            db_status = f"unhealthy: {str(e)}"
-        
-        return {
-            "status": "healthy", 
-            "service": settings.APP_NAME,
-            "database": db_status,
-            "timestamp": time.time()
-        }
-    except Exception as e:
-        return {
-            "status": "degraded",
-            "service": settings.APP_NAME,
-            "error": str(e),
-            "timestamp": time.time()
-        }
-
-@app.get("/healthz")
-async def health_check_render():
-    """Health check endpoint for Render with minimal dependencies"""
-    return {"status": "ok", "service": settings.APP_NAME}
+    return {"status": "healthy", "service": settings.APP_NAME}
 
 @app.get("/routes")
 async def get_routes():
@@ -217,13 +73,13 @@ async def get_routes():
 
 # Optional: Inline additional auth routes if not part of auth router yet
 class SignupData(BaseModel):
-    fullName: str  # Change from full_name to match frontend
+    fullName: str
     email: str
     password: str
     provider: Optional[str] = 'EMAIL'
-    acceptedTerms: bool  # Change from accepted_terms
-    subscribeNewsletter: bool  # Change from subscribe_newsletter
-    phoneNumber: Optional[str] = None  # Change from phone_number
+    acceptedTerms: bool
+    subscribeNewsletter: bool
+    phoneNumber: Optional[str] = None
     role: Optional[str] = 'STUDENT'
 
 class SignupResponse(BaseModel):
@@ -233,7 +89,6 @@ class SignupResponse(BaseModel):
 
 @app.post("/api/auth/register", response_model=SignupResponse)
 async def register(user_data: SignupData):
-    # TODO: Implement actual user registration logic
     return SignupResponse(
         message="User registered successfully",
         user_id=1,
@@ -242,7 +97,6 @@ async def register(user_data: SignupData):
 
 @app.post("/api/auth/check-email")
 async def check_email(email: dict):
-    # Mock check
     return {"available": True}
 
 @app.get("/api/debug/users")
@@ -251,7 +105,6 @@ async def debug_users():
     try:
         users = await prisma.user.find_many(take=10)
         
-        # Manually format the response with the fields we want
         user_data = []
         for user in users:
             user_data.append({
@@ -267,7 +120,6 @@ async def debug_users():
     except Exception as e:
         return {"error": str(e)}
 
-# Add a test endpoint to check password hashing
 @app.post("/api/debug/test-hash")
 async def test_password_hash():
     """Test password hashing functionality"""
@@ -284,15 +136,12 @@ async def test_password_hash():
         "message": "Password hashing working correctly" if is_valid else "Password hashing failed"
     }
 
-# Add this import at the top
 from app.services.email_service import email_service
 
-# Add these endpoints before the if __name__ == "__main__" block
 @app.post("/api/debug/test-email-config")
 async def test_email_config():
     """Test SMTP configuration"""
     try:
-        # Test connection
         if not settings.SMTP_HOST:
             return {
                 "status": "disabled", 
@@ -305,7 +154,6 @@ async def test_email_config():
                 }
             }
         
-        # Test connection
         connected = await email_service.test_connection()
         return {
             "status": "success" if connected else "failed",
@@ -334,7 +182,7 @@ async def send_test_email():
     """Send a test email"""
     try:
         await email_service.send_verification_email(
-            email="test@example.com",  # Change to your test email
+            email="test@example.com",
             token="test-token-123",
             name="Test User"
         )
@@ -342,15 +190,12 @@ async def send_test_email():
     except Exception as e:
         return {"status": "error", "message": f"Failed to send test email: {str(e)}"}
     
-# Add these endpoints before the if __name__ == "__main__" block
 @app.post("/api/debug/test-database")
 async def test_database():
     """Test database connection and operations"""
     try:
-        # Test connection
         users_count = await prisma.user.count()
         
-        # Test creating a user
         test_email = f"test_{int(time.time())}@example.com"
         test_user = await prisma.user.create({
             "email": test_email,
@@ -362,10 +207,8 @@ async def test_database():
             "role": "STUDENT"
         })
         
-        # Test reading the user
         found_user = await prisma.user.find_unique(where={"id": test_user.id})
         
-        # Clean up
         await prisma.user.delete(where={"id": test_user.id})
         
         return {
@@ -401,13 +244,9 @@ async def test_registration():
             subscribeNewsletter=False
         )
         
-        # Test the auth service directly
         user, token = await auth_service.create_user(test_data)
         
-        # Clean up: Delete related AuthToken records first
         await prisma.authtoken.delete_many(where={"userId": user["id"]})
-        
-        # Then delete the user
         await prisma.user.delete(where={"id": user["id"]})
         
         return {
@@ -452,52 +291,7 @@ async def test_password_verification(email: str, password: str):
         import traceback
         print(f"🔴 TRACEBACK: {traceback.format_exc()}")
         return {"error": str(e)}
-
-# Enhanced debug endpoint
-@app.get("/api/debug/engine-info")
-async def debug_engine_info():
-    """Get detailed Prisma engine information"""
-    import subprocess
     
-    info = {
-        "environment": {
-            "PRISMA_QUERY_ENGINE_BINARY": os.environ.get("PRISMA_QUERY_ENGINE_BINARY"),
-            "PWD": os.environ.get("PWD"),
-            "CWD": os.getcwd(),
-        },
-        "known_paths": {},
-        "find_results": None
-    }
-    
-    # Check known paths
-    known_paths = [
-        "/opt/render/.cache/prisma-python/binaries/5.4.2/ac9d7041ed77bcc8a8dbd2ab6616b39013829574/prisma-query-engine-debian-openssl-3.0.x",
-        "./prisma-query-engine-debian-openssl-3.0.x",
-        "./app/prisma-query-engine-debian-openssl-3.0.x",
-        "./app/generated/prisma/prisma-query-engine-debian-openssl-3.0.x",
-    ]
-    
-    for path in known_paths:
-        exists = os.path.exists(path)
-        info["known_paths"][path] = {
-            "exists": exists,
-            "executable": os.access(path, os.X_OK) if exists else False,
-            "size": os.path.getsize(path) if exists else 0
-        }
-    
-    # Try to find engine in filesystem
-    try:
-        result = subprocess.run([
-            "find", "/opt/render", "-name", "prisma-query-engine-*", "-type", "f", "-executable"
-        ], capture_output=True, text=True, timeout=10)
-        
-        if result.returncode == 0:
-            info["find_results"] = result.stdout.strip().split('\n') if result.stdout.strip() else []
-    except Exception as e:
-        info["find_error"] = str(e)
-    
-    return info
-
 app.include_router(dashboard.router, prefix=api_prefix, tags=["Dashboard"])
     
 if __name__ == "__main__":
