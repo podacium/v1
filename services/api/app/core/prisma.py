@@ -1,3 +1,6 @@
+import os
+os.environ['PRISMA_USE_PYTHON_ENGINE'] = '1'
+
 from app.generated.prisma import Prisma
 from app.core.config import settings
 import logging
