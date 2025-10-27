@@ -2,10 +2,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-import time  # <-- Add this import
+import time
+import os
+import subprocess
+import sys
+
 from app.core.config import settings
 from app.core.prisma import connect_prisma, disconnect_prisma, prisma
-from app.core.security import get_password_hash, verify_password  # <-- Add this import
+from app.core.security import get_password_hash, verify_password
 
 from app.routers import (
     auth, users, organizations, education, freelancing, 
@@ -29,14 +33,78 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+async def ensure_prisma_engine():
+    """Ensure Prisma query engine is available before connecting"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print(f"🔄 Attempt {attempt + 1}/{max_retries}: Testing Prisma engine...")
+            
+            # Try to connect to check if engine works
+            await prisma.connect()
+            print("✅ Prisma engine is working")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Prisma engine issue (attempt {attempt + 1}): {e}")
+            
+            if attempt < max_retries - 1:
+                print("🔄 Attempting to fetch Prisma engine...")
+                try:
+                    # Try to fetch the engine
+                    result = subprocess.run([
+                        sys.executable, "-m", "prisma", "py", "fetch"
+                    ], capture_output=True, text=True, timeout=60)
+                    
+                    if result.returncode == 0:
+                        print("✅ Prisma engine fetched successfully")
+                    else:
+                        print(f"⚠️ Prisma fetch output: {result.stdout}")
+                        print(f"⚠️ Prisma fetch error: {result.stderr}")
+                        
+                except subprocess.TimeoutExpired:
+                    print("❌ Prisma fetch timed out")
+                except Exception as fetch_error:
+                    print(f"❌ Prisma fetch failed: {fetch_error}")
+            
+            # Wait before retry
+            time.sleep(2)
+    
+    print("❌ All attempts to initialize Prisma engine failed")
+    return False
+
 # Prisma startup/shutdown
 @app.on_event("startup")
 async def startup():
-    await connect_prisma()
+    print("🚀 Starting application...")
+    
+    # First ensure Prisma engine is available
+    engine_ready = await ensure_prisma_engine()
+    
+    if not engine_ready:
+        print("⚠️ Starting without database connection - some features may not work")
+        return
+    
+    try:
+        # Now try to connect properly
+        await connect_prisma()
+        print("✅ Database connected successfully")
+        
+        # Test the connection
+        user_count = await prisma.user.count()
+        print(f"📊 Database test: {user_count} users found")
+        
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        print("⚠️ Application running in limited mode")
 
 @app.on_event("shutdown")
 async def shutdown():
-    await disconnect_prisma()
+    try:
+        await disconnect_prisma()
+        print("✅ Database disconnected")
+    except Exception as e:
+        print(f"⚠️ Error during shutdown: {e}")
 
 # API prefix
 api_prefix = "/api"
@@ -58,7 +126,34 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": settings.APP_NAME}
+    """Enhanced health check that tests database connectivity"""
+    try:
+        # Test database connection
+        db_status = "unknown"
+        try:
+            user_count = await prisma.user.count()
+            db_status = "healthy"
+        except Exception as e:
+            db_status = f"unhealthy: {str(e)}"
+        
+        return {
+            "status": "healthy", 
+            "service": settings.APP_NAME,
+            "database": db_status,
+            "timestamp": time.time()
+        }
+    except Exception as e:
+        return {
+            "status": "degraded",
+            "service": settings.APP_NAME,
+            "error": str(e),
+            "timestamp": time.time()
+        }
+
+@app.get("/healthz")
+async def health_check_render():
+    """Health check endpoint for Render with minimal dependencies"""
+    return {"status": "ok", "service": settings.APP_NAME}
 
 @app.get("/routes")
 async def get_routes():
@@ -308,6 +403,35 @@ async def test_password_verification(email: str, password: str):
         import traceback
         print(f"🔴 TRACEBACK: {traceback.format_exc()}")
         return {"error": str(e)}
+
+# New debug endpoint to check Prisma engine status
+@app.get("/api/debug/prisma-status")
+async def debug_prisma_status():
+    """Check Prisma engine and connection status"""
+    try:
+        # Check if we can connect
+        await prisma.connect()
+        
+        # Test a simple query
+        user_count = await prisma.user.count()
+        
+        # Get engine info
+        engine_info = {
+            "connected": True,
+            "user_count": user_count,
+            "engine_available": True
+        }
+        
+        await prisma.disconnect()
+        
+        return engine_info
+        
+    except Exception as e:
+        return {
+            "connected": False,
+            "engine_available": False,
+            "error": str(e)
+        }
     
 app.include_router(dashboard.router, prefix=api_prefix, tags=["Dashboard"])
     
