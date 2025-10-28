@@ -1,5 +1,6 @@
 import os
 os.environ['PRISMA_USE_PYTHON_ENGINE'] = '1'
+os.environ['PRISMA_PY_BINARY_CACHE_DIR'] = '/tmp'
 
 from app.generated.prisma import Prisma
 from app.core.config import settings
