@@ -1,6 +1,13 @@
 from app.generated.prisma import Prisma
 from app.core.config import settings
 import logging
+import os
+import logging
+from app.generated.prisma import Prisma
+from app.core.config import settings
+
+# Force Python engine to avoid binary issues
+os.environ['PRISMA_USE_PYTHON_ENGINE'] = '1'
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +22,14 @@ async def connect_prisma():
         logger.error(f"❌ Database connection failed: {e}")
         # Don't raise for now to allow app to start
         # raise
+        if not await prisma.is_connected():
+            await prisma.connect()
+        logger.info("✅ Database connected successfully (Python engine)")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {e}")
+        # Don't raise to allow app to start without DB
+        return False
 
 async def disconnect_prisma():
     """Disconnect from the database"""
