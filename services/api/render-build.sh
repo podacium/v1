@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-set -o errexit
+# Render build script for Prisma Python + FastAPI
+set -o errexit  # Exit on error
 
-echo "🚀 Running custom Render build script..."
+echo "📦 Installing dependencies..."
+pip install -r services/api/requirements.txt
 
-# Ensure Python dependencies are installed
-pip install -r requirements.txt
-
-# Generate Prisma client with correct binary target
+echo "⚙️ Generating Prisma client..."
+cd services/api
 python -m prisma generate
-
-echo "✅ Prisma client generated and binaries cached"
