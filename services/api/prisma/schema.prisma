@@ -1,6 +1,6 @@
 generator client {
   provider       = "prisma-client-py"
-  output         = "./app/generated/prisma"  // ✅ inside the same service folder
+  output         = "../app/generated/prisma"  // ✅ inside the same service folder
   binaryTargets  = ["debian-openssl-3.0.x"] // ✅ required for Render’s OS
 }
 
