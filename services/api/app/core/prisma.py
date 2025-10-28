@@ -1,3 +1,6 @@
+import os
+os.environ['PRISMA_USE_PYTHON_ENGINE'] = '1'
+
 from app.generated.prisma import Prisma
 from app.core.config import settings
 import logging
@@ -5,9 +8,6 @@ import os
 import logging
 from app.generated.prisma import Prisma
 from app.core.config import settings
-
-# Force Python engine to avoid binary issues
-os.environ['PRISMA_USE_PYTHON_ENGINE'] = '1'
 
 logger = logging.getLogger(__name__)
 
